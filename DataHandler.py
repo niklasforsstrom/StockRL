@@ -1,4 +1,7 @@
-def getMomentum(name, dataFrame, timeStep = 10):
+def getMomentum(index, dataFrame, timeStep = 10):
     #TODO fix this method
-    if (name == "AAPL"):
-        return dataFrame.High.AAPL
+    return dataFrame[index].High
+
+def getPE():
+    #TODO
+    return 0
