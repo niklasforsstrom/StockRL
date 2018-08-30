@@ -14,4 +14,4 @@ class Stock:
         self.name = name
         print("hej")
 
-        self.data = pdr.get_data_yahoo(start=self.start, end=self.end, tickers=self.name)
+        self.data = pdr.get_data_yahoo(start=self.start, end=self.end, tickers=self.name, actions=true)
