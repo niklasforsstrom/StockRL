@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import timedelta
 
 import pandas
 from pandas_datareader import data as pdr
@@ -18,19 +19,22 @@ class Stock:
         
         
         
-      def momentum(self, months): #Ger lista/array med momentum för en aktie i månadsintervall
+      def momentum(self, daysForw): #Ger lista/array med momentum för en aktie i månadsintervall
         close = []
         momentum = []
         day = 0
         current = self.start
-        future = self.start + months
+        diff = timedelta(days=daysForw)
+        future = self.start + diff
         while future <= self.end:
         	current = current + 1
-        	future = current + months
+        	future = current + diff
         	day = day + 1
         	close.append(self.data.iat[day, df.columns.get_loc('Close')])
-        for i in range(0, len(close)-months): #Blir detta rätt med index elr ska det bara vara len(close)
-            monentum.append(((close[i+monts]-close[i])/close[i-1])*100) #tänk på att första värdet inte får ngt momentum, ger det i procentutveckling
+        for i in range(0, len(close)-daysForw): #Blir detta rätt med index?
+            momentum.append(((close[i+daysForw]-close[i])/close[i])*100) #tänk på att första värdet inte får ngt momentum, ger det i procentutveckling
         
+        
+   
         
    
