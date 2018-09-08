@@ -1,57 +1,127 @@
 from datetime import datetime
-from datetime import timedelta
 
 import pandas
 from pandas_datareader import data as pdr
 import fix_yahoo_finance as yf
+import numpy as np
+import csv
+import xlrd
+
+
+
 
 class Stock:
 
+    def __init__(self, filename):
+        '''Initialises a stock and allokates it with the apropriate data'''
 
-    def __init__(self, start, end, name):
-        yf.pdr_override()
-        self.start = start
-        self.end = end
-        self.name = name
-        print("hej")
-
-        self.data = pdr.get_data_yahoo(start=self.start, end=self.end, tickers=self.name, actions=true)
-        
-        
-        
-
-    def getYearlyStockDataFromCsvFile(self, completeFileName):
-        ''' reads data from csv file of specific stock.
-         The file can not contain å,ä,ö.
-        '''
+        #get yearly data
+        self.filename = '/Users/Niklas/Desktop/test.csv'
         self.yearlyStockDataFromCsvFile = {}
-        with open(completeFileName) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=';')
-            #Read all rows in the file
-            for line_count, row in enumerate(csv_reader):
-                if row[0] is not "":
-                    # Prep work (altering the data to avoid errors when reading)
-                    for index, word in enumerate(row):
-                        if "," in word:
-                            row[index] = word.replace(",",".")
-                        if word is "":
-                            row[index] = 'nan'
-                            print(str(row))
+        #self.fetchYearlyStockDataFromCsvFile( self.filename)
 
-                    #Get the names of the years on the first row, skip then last entry since its not just a number
-                    if line_count == 0:
-                        self.yearlyStockDataFromCsvFile['dates'] = [float(row[2]), float(row[3]), float(row[4]),
-                                                  float(row[5]), float(row[6]), float(row[7]), float(row[8]),
-                                                  float(row[9]), float(row[10])]
-                        line_count += 1
-                    #Name each row by a combination of first and second entry
-                    #Store the following floats in an array
+        #get pricedata
+        self.priceData = {}
+        #self.fetchPriceOfStock(filename)
+
+        self.yearlyStockDataFromXlsFile = {}
+        self.fetchYearlyStockDataFromXlsFile('/Users/Niklas/Desktop/Borsdata/YearData/' + filename + ".xls")
+
+
+
+    def fetchYearlyStockDataFromXlsFile(self, filename):
+        '''Goes to the document for yearly stock data and fetches the content'''
+        workbook = xlrd.open_workbook(filename)
+        sheet = workbook.sheet_by_index(0)
+
+
+        # Make array containing dates
+        tmp = []
+        for col in range(2, sheet.ncols):
+            element = sheet.row(0)[col]
+            if "Q" in element.value:
+                if element.value[1] is "1":
+                    date = datetime(int(element.value[3:]), 4, 1)
+                if element.value[1] is "2":
+                    date = datetime(int(element.value[3:]), 7, 1)
+                if element.value[1] is "3":
+                    date = datetime(int(element.value[3:]), 10, 1)
+                if element.value[1] is "4":
+                    date = datetime(int(element.value[3:])+1, 1, 1)
+
+                tmp.append(date)
+            else:
+                date = datetime(int(element.value),12,31)
+                tmp.append(date)
+        self.yearlyStockDataFromXlsFile["Dates"] = tmp
+
+
+        #Make arrays containing datasets
+        for row in range(1, sheet.nrows):
+            tmp = []
+            for col in range(0, sheet.ncols):
+                if col != 0 and col!=1:
+                    element = sheet.row(row)[col]
+                    if isinstance(element.value, str):
+                        tmp.append(np.nan)
                     else:
-                        try:
-                            self.yearlyStockDataFromCsvFile[row[0] + "(" + row[1] + ")"] = [float(row[2]), float(row[3]), float(row[4]),
-                                                                          float(row[5]), float(row[6]), float(row[7]),
-                                                                          float(row[8]), float(row[9]), float(row[10])]
-                        #if some value is not a proper float
-                        except ValueError:
-                            print('error on row: ' + str(line_count) + '. The row looks like the following: ' + str(row))
-                        line_count += 1
+                        tmp.append(element.value)
+            self.yearlyStockDataFromXlsFile[sheet.row(row)[0].value] = tmp #+ '(' + sheet.row(row)[1].value + ')']= tmp    #TODO handle different currencies in meaningful way
+
+
+
+
+
+    def fetchPriceOfStock(self, filename):
+        '''Goes to the appropriate xls file and
+        reads the price data for that particular stock'''
+
+        workbook = xlrd.open_workbook(filename)
+        sheet = workbook.sheet_by_index(0)
+
+        for col in range (0,sheet.ncols):
+            tmp = []
+            for row in range (1,sheet.nrows):
+                element = sheet.row(row)[col]
+                if element.ctype == xlrd.XL_CELL_DATE:
+                    # Returns a tuple.
+                    dt_tuple = xlrd.xldate_as_tuple(element.value, workbook.datemode)
+                    # Create datetime object from this tuple.
+                    get_col = datetime(
+                        dt_tuple[0], dt_tuple[1], dt_tuple[2],
+                        dt_tuple[3], dt_tuple[4], dt_tuple[5]
+                    )
+                    if row == 1:
+                        self.stopdate = get_col
+                    if row == sheet.nrows-1:
+                        self.startdate = get_col
+                    tmp.append(get_col)
+                else:
+                    tmp.append(element.value)
+            self.priceData[sheet.row(0)[col].value] = tmp
+
+
+'''    def getMovingAverage(self, timeStep):
+
+        tmp = []
+        data = []
+        dates = []
+        for i in range(timeStep, self.data.Close.shape[0]):
+            print(self.data.Close[i])
+            if len(tmp) == timeStep or i == len(self.data.Close)-1:
+                data.append(np.mean(tmp))
+                tmp = [self.data.Close[i]]
+                dates.append(self.data.axes[0][i])
+            else:
+                tmp.append(self.data.Close[i])
+        print('dates')
+        print(len(dates))
+        print(dates)
+        print('data')
+        print(len(data))
+        print(data)
+        print('out')
+        print(pandas.DataFrame(data,columns = dates))
+        return dates#{'dates':dates,'data':data }
+'''
+
